@@ -1,0 +1,13 @@
+{
+    "forwarding_rules": {
+        "-1002328184572": [
+            "-1002298392981"
+        ]
+    },
+    "word_replacements": {},
+    "blacklist_words": [],
+    "approved_words": [],
+    "admins": [
+        "1493595978"
+    ]
+}

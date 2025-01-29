@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Install required libraries
+pip install telethon
+
+# Start the secondary script (Forwarder) in the background
+python3 script.py &
+
+# Start the bot script (BotUI)
+python3 bot.py
+
+# Wait for both scripts to finish
+wait
