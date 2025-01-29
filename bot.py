@@ -30,7 +30,7 @@ class BotUI:
                 'word_replacements': {},
                 'blacklist_words': [],
                 'approved_words': [],
-                'admins': ["1493595978"]  # List of admin user IDs
+                'admins': [""]  # List of admin user IDs
             }
 
     def save_config(self):
