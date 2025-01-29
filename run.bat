@@ -4,7 +4,7 @@
 pip install telethon
 
 :: Start the secondary script (Forwarder) in the background
-start python script.py
+start python forwarder.py
 
 :: Start the bot script (BotUI)
 python bot.py
