@@ -84,7 +84,10 @@ class BotUI:
         elif data == "list_rules":
             rules = self.config['forwarding_rules']
             if not rules:
-                await event.respond("No active forwarding rules.")
+                await event.respond(
+                    "No active forwarding rules.",
+                    buttons=[[Button.inline("◀️ Back to Menu", b"main_menu")]]
+                )
                 return
                 
             text = "**Active Forwarding Rules:**\n\n"
@@ -97,20 +100,139 @@ class BotUI:
             ])
 
         elif data == "word_replace":
-            self.user_states[event.sender_id] = {"state": "awaiting_word"}
-            await event.respond(
-                "Current replacements:\n" +
-                "\n".join([f"`{old}` → `{new}`" for old, new in self.config['word_replacements'].items()]) +
-                "\n\nEnter a word to replace (or /cancel to go back):"
-            )
+            replacements = self.config['word_replacements']
+            text = "**Current Word Replacements:**\n\n"
+            if replacements:
+                for old, new in replacements.items():
+                    text += f"`{old}` → `{new}`\n"
+            else:
+                text += "No word replacements configured.\n"
+            
+            await event.respond(text, buttons=[
+                [Button.inline("➕ Add Replacement", b"add_replacement")],
+                [Button.inline("🗑️ Delete Replacement", b"delete_replacement")],
+                [Button.inline("◀️ Back to Menu", b"main_menu")]
+            ])
+
+        elif data == "add_replacement":
+            self.user_states[event.sender_id] = {"state": "awaiting_old_word"}
+            await event.respond("Enter the word to be replaced:")
+
+        elif data == "delete_replacement":
+            replacements = self.config['word_replacements']
+            if not replacements:
+                await event.respond(
+                    "No word replacements to delete.",
+                    buttons=[[Button.inline("◀️ Back", b"word_replace")]]
+                )
+                return
+
+            buttons = [
+                [Button.inline(f"❌ {old} → {new}", f"del_replace_{old}")]
+                for old, new in replacements.items()
+            ]
+            buttons.append([Button.inline("◀️ Back", b"word_replace")])
+            await event.respond("Select a replacement to delete:", buttons=buttons)
+
+        elif data.startswith("del_replace_"):
+            word = data.replace("del_replace_", "")
+            if word in self.config['word_replacements']:
+                del self.config['word_replacements'][word]
+                self.save_config()
+                await event.respond(
+                    f"Deleted replacement for '{word}'",
+                    buttons=[[Button.inline("◀️ Back", b"word_replace")]]
+                )
 
         elif data == "blacklist":
             words = self.config['blacklist_words']
-            await event.respond(
-                "**Blacklisted Words:**\n" +
-                "\n".join([f"• `{word}`" for word in words]) +
-                "\n\nSend words to add to blacklist (comma-separated) or /cancel to go back."
-            )
+            text = "**Current Blacklisted Words:**\n\n"
+            if words:
+                for word in words:
+                    text += f"• `{word}`\n"
+            else:
+                text += "No blacklisted words.\n"
+            
+            await event.respond(text, buttons=[
+                [Button.inline("➕ Add Words", b"add_blacklist")],
+                [Button.inline("🗑️ Delete Words", b"delete_blacklist")],
+                [Button.inline("◀️ Back to Menu", b"main_menu")]
+            ])
+
+        elif data == "add_blacklist":
+            self.user_states[event.sender_id] = {"state": "awaiting_blacklist"}
+            await event.respond("Enter words to blacklist (comma-separated):")
+
+        elif data == "delete_blacklist":
+            words = self.config['blacklist_words']
+            if not words:
+                await event.respond(
+                    "No blacklisted words to delete.",
+                    buttons=[[Button.inline("◀️ Back", b"blacklist")]]
+                )
+                return
+
+            buttons = [
+                [Button.inline(f"❌ {word}", f"del_blacklist_{word}")]
+                for word in words
+            ]
+            buttons.append([Button.inline("◀️ Back", b"blacklist")])
+            await event.respond("Select a word to remove from blacklist:", buttons=buttons)
+
+        elif data.startswith("del_blacklist_"):
+            word = data.replace("del_blacklist_", "")
+            if word in self.config['blacklist_words']:
+                self.config['blacklist_words'].remove(word)
+                self.save_config()
+                await event.respond(
+                    f"Removed '{word}' from blacklist",
+                    buttons=[[Button.inline("◀️ Back", b"blacklist")]]
+                )
+
+        elif data == "approved":
+            words = self.config['approved_words']
+            text = "**Current Approved Words:**\n\n"
+            if words:
+                for word in words:
+                    text += f"• `{word}`\n"
+            else:
+                text += "No approved words.\n"
+            
+            await event.respond(text, buttons=[
+                [Button.inline("➕ Add Words", b"add_approved")],
+                [Button.inline("🗑️ Delete Words", b"delete_approved")],
+                [Button.inline("◀️ Back to Menu", b"main_menu")]
+            ])
+
+        elif data == "add_approved":
+            self.user_states[event.sender_id] = {"state": "awaiting_approved"}
+            await event.respond("Enter words to approve (comma-separated):")
+
+        elif data == "delete_approved":
+            words = self.config['approved_words']
+            if not words:
+                await event.respond(
+                    "No approved words to delete.",
+                    buttons=[[Button.inline("◀️ Back", b"approved")]]
+                )
+                return
+
+            buttons = [
+                [Button.inline(f"❌ {word}", f"del_approved_{word}")]
+                for word in words
+            ]
+            buttons.append([Button.inline("◀️ Back", b"approved")])
+            await event.respond("Select a word to remove from approved list:", buttons=buttons)
+
+        elif data.startswith("del_approved_"):
+            word = data.replace("del_approved_", "")
+            if word in self.config['approved_words']:
+                self.config['approved_words'].remove(word)
+                self.save_config()
+                await event.respond(
+                    f"Removed '{word}' from approved words",
+                    buttons=[[Button.inline("◀️ Back", b"approved")]]
+                )
 
         elif data == "main_menu":
             await self.handle_start(event)
@@ -166,29 +288,95 @@ class BotUI:
                 buttons=[[Button.inline("◀️ Back to Menu", b"main_menu")]]
             )
 
+        elif state == "awaiting_old_word":
+            old_word = event.message.text
+            self.user_states[user_id].update({
+                "state": "awaiting_new_word",
+                "old_word": old_word
+            })
+            await event.respond(f"Enter the replacement for '{old_word}':")
+
+        elif state == "awaiting_new_word":
+            new_word = event.message.text
+            old_word = self.user_states[user_id]["old_word"]
+            self.config['word_replacements'][old_word] = new_word
+            self.save_config()
+            del self.user_states[user_id]
+            await event.respond(
+                f"✅ Added replacement: '{old_word}' → '{new_word}'",
+                buttons=[[Button.inline("◀️ Back to Word Replacements", b"word_replace")]]
+            )
+
+        elif state == "awaiting_blacklist":
+            words = [w.strip() for w in event.message.text.split(",")]
+            self.config['blacklist_words'].extend(words)
+            self.config['blacklist_words'] = list(set(self.config['blacklist_words']))  # Remove duplicates
+            self.save_config()
+            del self.user_states[user_id]
+            await event.respond(
+                f"✅ Added {len(words)} words to blacklist",
+                buttons=[[Button.inline("◀️ Back to Blacklist", b"blacklist")]]
+            )
+
+        elif state == "awaiting_approved":
+            words = [w.strip() for w in event.message.text.split(",")]
+            self.config['approved_words'].extend(words)
+            self.config['approved_words'] = list(set(self.config['approved_words']))  # Remove duplicates
+            self.save_config()
+            del self.user_states[user_id]
+            await event.respond(
+                f"✅ Added {len(words)} words to approved list",
+                buttons=[[Button.inline("◀️ Back to Approved Words", b"approved")]]
+            )
+
     async def start_forwarding(self, source_id: str, dest_id: str):
-        # Send a command to the secondary script to start forwarding
-        command = f"start_forward:{source_id}:{dest_id}"
-        await self.send_command_to_forwarder(command)
+        try:
+            # Send a command to the secondary script to start forwarding
+            command = f"start_forward:{source_id}:{dest_id}"
+            await self.send_command_to_forwarder(command)
+        except Exception as e:
+            logger.error(f"Failed to start forwarding: {e}")
+            await self.bot.send_message(
+                int(self.config['admins'][0]),
+                f"⚠️ Error starting forwarding from {source_id} to {dest_id}: {str(e)}"
+            )
 
     async def stop_forwarding(self, source_id: str, dest_id: str):
-        # Send a command to the secondary script to stop forwarding
-        command = f"stop_forward:{source_id}:{dest_id}"
-        await self.send_command_to_forwarder(command)
+        try:
+            # Send a command to the secondary script to stop forwarding
+            command = f"stop_forward:{source_id}:{dest_id}"
+            await self.send_command_to_forwarder(command)
+        except Exception as e:
+            logger.error(f"Failed to stop forwarding: {e}")
+            await self.bot.send_message(
+                int(self.config['admins'][0]),
+                f"⚠️ Error stopping forwarding from {source_id} to {dest_id}: {str(e)}"
+            )
 
     async def send_command_to_forwarder(self, command: str):
-        # Connect to the secondary script via TCP socket
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect(('localhost', 65432))  # Connect to the secondary script
-                s.sendall(command.encode('utf-8'))  # Send the command
-                response = s.recv(1024).decode('utf-8')  # Wait for a response
+                s.connect(('localhost', 65432))
+                s.sendall(command.encode('utf-8'))
+                response = s.recv(1024).decode('utf-8')
                 logger.info(f"Response from forwarder: {response}")
+                return response
         except Exception as e:
             logger.error(f"Failed to communicate with forwarder: {e}")
+            raise
 
     async def is_admin(self, user_id: int) -> bool:
         return str(user_id) in self.config['admins']
+
+    async def stop_all_forwards(self):
+        """Stop all active forwarding rules"""
+        rules = self.config['forwarding_rules'].copy()
+        for source, destinations in rules.items():
+            for dest in destinations:
+                await self.stop_forwarding(source, dest)
+        
+        self.config['forwarding_rules'] = {}
+        self.save_config()
 
 if __name__ == "__main__":
     # Load credentials from config

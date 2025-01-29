@@ -4,8 +4,15 @@
             "-1002298392981"
         ]
     },
-    "word_replacements": {},
-    "blacklist_words": [],
+    "word_replacements": {
+        "professor": "fxacuity",
+        "\u2764\ufe0f": "\ud83d\udc95\ud83d\udc95\ud83d\udc95"
+    },
+    "blacklist_words": [
+        "prick",
+        "idiot",
+        "discount"
+    ],
     "approved_words": [],
     "admins": [
         "1493595978"
