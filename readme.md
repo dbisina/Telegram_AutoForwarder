@@ -28,7 +28,7 @@ A powerful and flexible Telegram bot that forwards messages between channels/gro
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/telegram-forwarder.git
+git clone https://github.com/dbisina/telegram-forwarder.git
 cd telegram-forwarder
 ```
 
@@ -57,14 +57,15 @@ your_bot_token
 
 ## 🚀 Usage
 
-1. Start the forwarder service:
+1. Start the forwarder service and bot interface for windows users:
 ```bash
-python forwarder.py
+.\run.bat
 ```
 
-2. Start the bot interface:
+2. Start the forwarder service and bot interface for linux/mac users:
 ```bash
-python bot_ui.py
+chmod +x run_script.sh
+./run_script.sh
 ```
 
 3. Interact with the bot on Telegram:
@@ -179,7 +180,7 @@ For support, please:
 - Python 3.7+
 - Telethon library
 - Active internet connection
-- Telegram API credentials
+- Telegram API credentials from <https://my.telegram.org/auth>
 - Bot token from @BotFather
 
 ---

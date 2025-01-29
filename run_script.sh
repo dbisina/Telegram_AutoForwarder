@@ -7,7 +7,7 @@ pip install telethon
 python3 forwarder.py &
 
 # Start the bot script (BotUI)
-python3 bot.py
+python3 bot_ui.py
 
 # Wait for both scripts to finish
 wait

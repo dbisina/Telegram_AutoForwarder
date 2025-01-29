@@ -7,7 +7,7 @@ pip install telethon
 start python forwarder.py
 
 :: Start the bot script (BotUI)
-python bot.py
+python bot_ui.py
 
 :: Wait for user input before closing
 pause
