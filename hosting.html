@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hosting Telegram Forwarder on AWS EC2 Free Tier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        .highlight {
+            background: #e7f4ff;
+            padding: 10px;
+            border-left: 5px solid #3498db;
+            margin: 10px 0;
+        }
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Hosting Telegram Forwarder on AWS EC2 Free Tier</h1>
+        <p>A beginner-friendly guide to deploy the Telegram Forwarder bot on an AWS EC2 free tier instance.</p>
+        
+        <h2>📋 Prerequisites</h2>
+        <ul>
+            <li>An AWS account (free tier eligible)</li>
+            <li>Telegram API credentials: API ID, API Hash, Bot Token</li>
+            <li>Basic terminal/command line knowledge</li>
+        </ul>
+        
+        <h2>🎯 AWS Free Tier Details</h2>
+        <p>AWS Free Tier includes:</p>
+        <ul>
+            <li>750 hours per month of t2.micro instance usage</li>
+            <li>30GB of storage</li>
+            <li>Valid for 12 months</li>
+        </ul>
+        
+        <h2>🔧 Step-by-Step Setup Guide</h2>
+        <h3>1️⃣ Create EC2 Instance</h3>
+        <div class="highlight">
+            <p><strong>Instance Configuration:</strong></p>
+            <ul>
+                <li>Name: telegram-forwarder</li>
+                <li>OS: Ubuntu Server 22.04 LTS</li>
+                <li>Instance type: t2.micro</li>
+                <li>Key pair: Create new</li>
+                <li>Storage: 8GB</li>
+            </ul>
+        </div>
+
+        <h3>2️⃣ Connect to Your Instance</h3>
+        <h4>🪟 Windows:</h4>
+        <pre><code>icacls.exe .\your-key.pem /reset
+icacls.exe .\your-key.pem /grant:r "$($env:username):(r)"
+icacls.exe .\your-key.pem /inheritance:r
+ssh -i "your-key.pem" ubuntu@your-instance-public-dns</code></pre>
+
+        <h4>🐧 Linux/Mac:</h4>
+        <pre><code>chmod 400 your-key.pem
+ssh -i "your-key.pem" ubuntu@your-instance-public-dns</code></pre>
+
+        <h3>3️⃣ Install Required Software</h3>
+        <pre><code>sudo apt update && sudo apt upgrade -y
+sudo apt install python3-pip python3-venv git -y
+mkdir telegram-forwarder
+cd telegram-forwarder
+git clone https://github.com/yourusername/telegram-forwarder.git .
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt</code></pre>
+
+        <h3>4️⃣ Set Up Configuration</h3>
+        <pre><code>nano credentials.txt</code></pre>
+        <pre><code>your_api_id
+your_api_hash
+your_bot_token</code></pre>
+        
+        <h3>5️⃣ Create System Service</h3>
+        <pre><code>sudo nano /etc/systemd/system/telegram-forwarder.service</code></pre>
+        <pre><code>[Unit]
+Description=Telegram Forwarder Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/telegram-forwarder
+Environment=PATH=/home/ubuntu/telegram-forwarder/venv/bin
+ExecStart=/home/ubuntu/telegram-forwarder/venv/bin/python forwarder.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+        <h3>6️⃣ Start Services</h3>
+        <pre><code>sudo systemctl enable telegram-forwarder
+sudo systemctl start telegram-forwarder
+sudo systemctl status telegram-forwarder</code></pre>
+        
+        <h2>📝 Maintenance Commands</h2>
+        <h3>View Logs</h3>
+        <pre><code>sudo journalctl -u telegram-forwarder -f</code></pre>
+
+        <h3>Restart Services</h3>
+        <pre><code>sudo systemctl restart telegram-forwarder</code></pre>
+
+        <h3>Update Bot</h3>
+        <pre><code>cd ~/telegram-forwarder
+git pull
+source venv/bin/activate
+pip install -r requirements.txt
+sudo systemctl restart telegram-forwarder</code></pre>
+
+        <h2>⚠️ Important Notes</h2>
+        <ul>
+            <li><strong>Security:</strong> Keep credentials and .pem file safe</li>
+            <li><strong>Cost Management:</strong> Monitor AWS usage to avoid charges</li>
+            <li><strong>Backup:</strong> Regularly back up configuration files</li>
+        </ul>
+
+        <h2>📞 Support</h2>
+        <p>If you encounter issues, check service logs, verify AWS instance status, and review configuration files.</p>
+
+        <footer>
+            <p>🚀 Stay updated &amp; secure your AWS setup!</p>
+        </footer>
+    </div>
+</body>
+</html>
