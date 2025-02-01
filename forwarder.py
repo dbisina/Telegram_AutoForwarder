@@ -27,12 +27,15 @@ class Forwarder:
         self.client = TelegramClient('forwarder_user', self.api_id, self.api_hash)
         self.config = self.load_config()
         self.socket_server = None
+        self.lock = asyncio.Lock()
         self.message_map: Dict[int, Dict[int, List[Tuple[int, int]]]] = {}
 
     def load_config(self) -> dict:
         try:
             with open('config.json', 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+                config.setdefault('forward_media_settings', {})
+                return config
         except FileNotFoundError:
             return {
                 'forwarding_rules': {},
@@ -63,26 +66,43 @@ class Forwarder:
 
             chats = {}
             for dialog in result.dialogs:
-                chat = dialog.entity
-                if isinstance(chat, (Channel, Chat, User)):
-                    chat_id = str(chat.id)
-                    if isinstance(chat, Channel):
-                        if getattr(chat, 'megagroup', False):
-                            chat_type = 'supergroup'
-                        else:
-                            chat_type = 'channel'
-                    elif isinstance(chat, Chat):
+                try:
+                    # Get the peer from dialog
+                    peer = dialog.peer
+                    entity = await self.client.get_entity(peer)
+                    
+                    # Handle different entity types
+                    if isinstance(entity, Channel):
+                        chat_type = 'channel' if entity.broadcast else 'supergroup'
+                        username = entity.username if hasattr(entity, 'username') else None
+                        members_count = entity.participants_count if hasattr(entity, 'participants_count') else None
+                    elif isinstance(entity, Chat):
                         chat_type = 'group'
-                    elif isinstance(chat, User):
+                        username = None
+                        members_count = entity.participants_count
+                    elif isinstance(entity, User):
                         chat_type = 'user'
+                        username = entity.username
+                        members_count = 1
+                    else:
+                        continue
+
+                    chat_id = str(entity.id)
+                    title = getattr(entity, 'title', 
+                                getattr(entity, 'first_name', '') + ' ' + 
+                                getattr(entity, 'last_name', '')).strip()
 
                     chats[chat_id] = {
                         'id': chat_id,
-                        'title': getattr(chat, 'title', getattr(chat, 'first_name', '') + ' ' + getattr(chat, 'last_name', '')).strip(),
+                        'title': title,
                         'type': chat_type,
-                        'members_count': getattr(chat, 'participants_count', None),
-                        'username': getattr(chat, 'username', None)
+                        'username': username,
+                        'members_count': members_count
                     }
+
+                except Exception as e:
+                    logger.error(f"Error processing dialog: {e}")
+                    continue
 
             self.config['available_chats'] = chats
             self.save_config()
@@ -105,13 +125,15 @@ class Forwarder:
 
             elif cmd_type == "start_forward":
                 source_id, dest_id, forward_media = parts[1], parts[2], parts[3].lower() == 'true'
-                if source_id not in self.config['forwarding_rules']:
-                    self.config['forwarding_rules'][source_id] = []
-                if dest_id not in self.config['forwarding_rules'][source_id]:
-                    self.config['forwarding_rules'][source_id].append(dest_id)
+                async with self.lock:
+                    self.config.setdefault('forward_media_settings', {})
+                    if source_id not in self.config['forwarding_rules']:
+                        self.config['forwarding_rules'][source_id] = []
+                    if dest_id not in self.config['forwarding_rules'][source_id]:
+                        self.config['forwarding_rules'][source_id].append(dest_id)
                     rule_key = f"{source_id}:{dest_id}"
                     self.config['forward_media_settings'][rule_key] = forward_media
-                self.save_config()
+                    self.save_config()
                 return f"Started forwarding from {source_id} to {dest_id}"
 
             elif cmd_type == "stop_forward":
