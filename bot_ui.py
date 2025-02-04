@@ -8,7 +8,6 @@ import os
 import socket
 from dotenv import load_dotenv
 from typing import Optional, Dict
-from forwarder import Forwarder  # Import Forwarder class
 
 # Load environment variables
 load_dotenv()
@@ -33,7 +32,6 @@ class BotUI:
         self.bot = TelegramClient("bot_ui", API_ID, API_HASH)
         self.user_states: Dict[int, dict] = {}
         self.config = self.load_config()
-        self.forwarder = Forwarder()
         self.lock = asyncio.Lock()
 
     def load_config(self) -> dict:
@@ -565,26 +563,20 @@ class BotUI:
         ])
 
     async def handle_message(self, event: Message):
-        """Handle text messages for various states and forward non-command messages"""
+        """Handle text messages for various states"""
         if not await self.is_admin(event.sender_id):
             return
 
         user_id = event.sender_id
-
-        # If user is not in an active state, forward the message
-        if user_id not in self.user_states:
-            logger.debug(f"Forwarding message from {event.chat_id} - {event.message.text}")
-            
-            if hasattr(self, "forwarder"):  # Ensure forwarder is initialized
-                await self.forwarder.forward_messages(event)
-            else:
-                logger.error("Forwarder is not initialized!")
-            return
-
+        
         # Handle state-based admin inputs
         if event.message.text == "/cancel":
             del self.user_states[user_id]
             await self.handle_start(event)
+            return
+
+        # If user is not in an active state, ignore the message
+        if user_id not in self.user_states:
             return
 
         state = self.user_states[user_id]["state"]
@@ -604,25 +596,28 @@ class BotUI:
                 buttons=[[Button.inline("◀️ Back to Menu", b"main_menu")]]
             )
 
-    async def send_command_to_forwarder(self, command: str) -> str:
+    async def send_command_to_forwarder(self, command: str, retries=3):
         """Send command to forwarder service"""
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect(('localhost', 65432))
-                s.settimeout(10)  # 10 second timeout
-                s.sendall(command.encode('utf-8'))
-                response = s.recv(1024).decode('utf-8')
-                logger.info(f"Response from forwarder: {response}")
-                return response
-        except socket.timeout:
-            logger.error("Timeout while communicating with forwarder")
-            raise RuntimeError("Forwarder communication timeout")
-        except ConnectionRefusedError:
-            logger.error("Forwarder service is not running")
-            raise RuntimeError("Forwarder service is not running")
-        except Exception as e:
-            logger.error(f"Failed to communicate with forwarder: {e}")
-            raise
+        for attempt in range(retries):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.connect(('localhost', 65432))
+                    s.settimeout(10)  # 10 second timeout
+                    s.sendall(command.encode('utf-8'))
+                    response = s.recv(1024).decode('utf-8')
+                    logger.info(f"Response from forwarder: {response}")
+                    return response
+            except socket.timeout:
+                logger.error("Timeout while communicating with forwarder")
+                raise RuntimeError("Forwarder communication timeout")
+            except ConnectionRefusedError:
+                logger.error("Forwarder service is not running")
+                raise RuntimeError("Forwarder service is not running")
+            except Exception as e:
+                logger.error(f"Failed to communicate with forwarder: {e}")
+                if attempt == retries - 1:
+                    raise
+                await asyncio.sleep(1)
 
     async def start_forwarding(self, source_id: str, dest_id: str, forward_media: bool):
         """Start forwarding messages between chats"""
@@ -647,6 +642,7 @@ class BotUI:
         except Exception as e:
             logger.error(f"Failed to stop forwarding: {e}")
             raise
+
 
     async def handle_stop_all(self, event):
         """Handle stopping all forwarding rules"""

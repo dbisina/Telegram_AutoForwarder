@@ -37,26 +37,19 @@ class Forwarder:
                 config.setdefault('forward_media_settings', {})
                 return config
         except FileNotFoundError:
-            default_config = {
+            return {
                 'forwarding_rules': {},
                 'word_replacements': {},
                 'blacklist_words': [],
                 'approved_words': [],
                 'admins': [os.getenv('ADMIN_ID', '')],
-                'forward_media_settings': {},
-                'available_chats': {}
+                'forward_media_settings': {}
             }
-            self.save_config(default_config)
-            return default_config
 
-    def save_config(self, config: dict = None):
-        if config is None:
-            config = self.config
+    def save_config(self):
         try:
-            if 'forward_media_settings' not in config:
-                config['forward_media_settings'] = {}
             with open('config.json', 'w') as f:
-                json.dump(config, f, indent=4)
+                json.dump(self.config, f, indent=4)
         except Exception as e:
             logger.error(f"Error saving config: {e}")
 
@@ -82,11 +75,11 @@ class Forwarder:
                     if isinstance(entity, Channel):
                         chat_type = 'channel' if entity.broadcast else 'supergroup'
                         username = entity.username if hasattr(entity, 'username') else None
-                        members_count = getattr(entity, 'participants_count', None)
+                        members_count = entity.participants_count if hasattr(entity, 'participants_count') else None
                     elif isinstance(entity, Chat):
                         chat_type = 'group'
                         username = None
-                        members_count = getattr(entity, 'participants_count', None)
+                        members_count = entity.participants_count
                     elif isinstance(entity, User):
                         chat_type = 'user'
                         username = entity.username
@@ -95,7 +88,9 @@ class Forwarder:
                         continue
 
                     chat_id = str(entity.id)
-                    title = getattr(entity, 'title', '') or (getattr(entity, 'first_name', '') + ' ' + getattr(entity, 'last_name', '')).strip()
+                    title = getattr(entity, 'title', 
+                                getattr(entity, 'first_name', '') + ' ' + 
+                                getattr(entity, 'last_name', '')).strip()
 
                     chats[chat_id] = {
                         'id': chat_id,
@@ -111,7 +106,6 @@ class Forwarder:
 
             self.config['available_chats'] = chats
             self.save_config()
-            logger.info("Chats fetched and saved")
             return "Success: Chats fetched and saved"
 
         except Exception as e:
@@ -140,7 +134,6 @@ class Forwarder:
                     rule_key = f"{source_id}:{dest_id}"
                     self.config['forward_media_settings'][rule_key] = forward_media
                     self.save_config()
-                logger.info(f"Started forwarding from {source_id} to {dest_id} with media: {forward_media}")
                 return f"Started forwarding from {source_id} to {dest_id}"
 
             elif cmd_type == "stop_forward":
@@ -163,22 +156,20 @@ class Forwarder:
     async def handle_message(self, event):
         try:
             self.config = self.load_config()
+
             source_id = str(event.chat_id)
-            logger.debug(f"Received message from chat {source_id}")
             if source_id not in self.config['forwarding_rules']:
-                logger.debug(f"No forwarding rule for chat {source_id}")
                 return
 
             destinations = self.config['forwarding_rules'][source_id]
+
             has_media = bool(event.message.media)
             has_text = bool(event.message.text)
 
             if not has_text and not has_media:
-                logger.debug("Message has no text or media, skipping")
                 return
 
             if has_text and not self.should_forward_message(event.message.text):
-                logger.debug("Message text did not pass filtering")
                 return
 
             src_chat_id = event.chat_id
@@ -186,6 +177,7 @@ class Forwarder:
 
             if src_chat_id not in self.message_map:
                 self.message_map[src_chat_id] = {}
+
             self.message_map[src_chat_id][src_msg_id] = []
 
             for dest_id in destinations:
@@ -194,7 +186,6 @@ class Forwarder:
                     forward_media = self.config['forward_media_settings'].get(rule_key, True)
 
                     if has_media and not forward_media:
-                        logger.info(f"Skipping media message for rule {rule_key}")
                         continue
 
                     dest_msg = await self.client.forward_messages(
@@ -212,13 +203,10 @@ class Forwarder:
                             )
 
                     self.message_map[src_chat_id][src_msg_id].append((int(dest_id), dest_msg.id))
-                    logger.info(f"Forwarded message {src_msg_id} from {source_id} to {dest_id}")
-
+                    logger.info(f"Forwarded message from {source_id} to {dest_id}")
                 except Exception as e:
                     logger.error(f"Error forwarding to {dest_id}: {e}")
 
-            # Log the updated message map and then save it
-            logger.debug(f"Updated message_map: {self.message_map}")
             self.save_message_map()
 
         except Exception as e:
@@ -236,7 +224,6 @@ class Forwarder:
                     if rule_key in self.config['forward_media_settings']:
                         del self.config['forward_media_settings'][rule_key]
                     self.save_config()
-                    logger.info(f"Stopped forwarding from {source_id} to {dest_id}")
                     return f"Stopped forwarding from {source_id} to {dest_id}"
             return f"No forwarding rule found from {source_id} to {dest_id}"
         except Exception as e:
@@ -256,6 +243,7 @@ class Forwarder:
                 return
 
             processed_text = self.process_message_text(event.message.text)
+
             src_chat_id = event.chat_id
             src_msg_id = event.message.id
 
@@ -275,23 +263,29 @@ class Forwarder:
     def process_message_text(self, text: str) -> str:
         if not text:
             return text
+
         processed_text = text
         for old_word, new_word in self.config['word_replacements'].items():
             processed_text = processed_text.replace(old_word, new_word)
+
         return processed_text
 
     def should_forward_message(self, text: str) -> bool:
-        """if not text:
+        if not text:
             return False
 
         text_lower = text.lower()
 
-        # Check for blacklisted words first.
         if any(word.lower() in text_lower for word in self.config['blacklist_words']):
             logger.info(f"Message blocked by blacklist: {text[:50]}...")
-            return False"""
+            return False
 
-        # Approved words filter is disabled for now.
+        if self.config['approved_words']:
+            should_forward = any(word.lower() in text_lower for word in self.config['approved_words'])
+            if not should_forward:
+                logger.info(f"Message doesn't contain any approved words: {text[:50]}...")
+            return should_forward
+
         return True
 
     async def start_socket_server(self):
@@ -316,31 +310,22 @@ class Forwarder:
             await writer.wait_closed()
 
     def save_message_map(self):
-        """Ensure message map is saved properly"""
-        try:
-            with open('message_map.json', 'w') as f:
-                json.dump({
-                    str(k): {str(k2): v for k2, v in v.items()}
-                    for k, v in self.message_map.items()
-                }, f)
-            logger.debug("Message map saved to disk.")
-        except Exception as e:
-            logger.error(f"Error saving message map: {e}")
+        with open('message_map.json', 'w') as f:
+            serializable_map = {
+                str(k): {str(k2): v for k2, v in v.items()}
+                for k, v in self.message_map.items()
+            }
+            json.dump(serializable_map, f)
 
     def load_message_map(self):
         try:
             with open('message_map.json', 'r') as f:
-                content = f.read().strip()
-                if not content:
-                    self.message_map = {}
-                    return
-                data = json.loads(content)
+                data = json.load(f)
                 self.message_map = {
                     int(k): {int(k2): v for k2, v in v.items()}
                     for k, v in data.items()
                 }
-                logger.debug("Message map loaded from disk.")
-        except (FileNotFoundError, json.JSONDecodeError):
+        except FileNotFoundError:
             self.message_map = {}
 
     async def start(self):
