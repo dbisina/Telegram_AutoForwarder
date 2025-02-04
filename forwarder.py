@@ -10,6 +10,7 @@ import socket
 import os
 from dotenv import load_dotenv
 import tempfile
+from mimetypes import guess_extension
 
 # Load environment variables
 load_dotenv()
@@ -296,26 +297,35 @@ class Forwarder:
                     forward_media = self.config['forward_media_settings'].get(rule_key, True)
 
                     if event.message.media and forward_media:
-                        # Create temporary directory that auto-deletes
+                        media = event.message.media
+                        # Get file extension from mime-type or media type
+                        ext = self.get_file_extension(media)
+                        
                         with tempfile.TemporaryDirectory() as temp_dir:
                             try:
-                                # Download media to temp file
-                                temp_path = os.path.join(temp_dir, "media")
-                                await event.message.download_media(temp_path)
+                                # Create temp file with proper extension
+                                temp_file = os.path.join(temp_dir, f"media{ext}")
                                 
+                                # Download media to specific file path
+                                await event.message.download_media(file=temp_file)
+                                
+                                # Verify file exists before sending
+                                if not os.path.exists(temp_file):
+                                    raise ValueError("Downloaded file not found")
+
                                 # Send media with caption
                                 caption = self.process_message_text(event.message.text) if event.message.text else None
                                 await self.client.send_file(
                                     int(dest_id),
-                                    temp_path,
-                                    caption=caption
+                                    temp_file,
+                                    caption=caption,
+                                    force_document=False  # Maintain media type
                                 )
                             except Exception as media_error:
                                 logger.error(f"Media handling error: {media_error}")
                                 continue
 
                     elif event.message.text:
-                        # Handle text message
                         processed_text = self.process_message_text(event.message.text)
                         await self.client.send_message(
                             int(dest_id),
@@ -327,6 +337,19 @@ class Forwarder:
 
         except Exception as e:
             logger.error(f"Error in handle_message: {e}")
+
+def get_file_extension(self, media):
+    """Get appropriate file extension for media type"""
+    # Check for different media types
+    if hasattr(media, 'photo'):
+        return '.jpg'  # Telegram photos are typically JPEG
+    if hasattr(media, 'document'):
+        if media.document.mime_type:
+            return guess_extension(media.document.mime_type) or '.bin'
+        return os.path.splitext(media.document.attributes[0].file_name)[1]
+    if hasattr(media, 'sticker'):
+        return '.webp' if media.sticker.mime_type == 'image/webp' else '.png'
+    return '.bin'  # Fallback extension
 
     async def stop_forwarding(self, source_id: str, dest_id: str):
         """Enhanced stop forwarding with cleanup"""
