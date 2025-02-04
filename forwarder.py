@@ -73,15 +73,23 @@ class Forwarder:
                     
                     # Handle different entity types
                     if isinstance(entity, Channel):
-                        chat_type = 'channel' if entity.broadcast else 'supergroup'
+                        if entity.broadcast:
+                            chat_type = 'channel'
+                            chat_id = str(entity.id)
+                            
+                        else:
+                            chat_type = 'supergroup'
+                            chat_id = f"-100{entity.id}"  # Proper supergroup ID format
                         username = entity.username if hasattr(entity, 'username') else None
                         members_count = entity.participants_count if hasattr(entity, 'participants_count') else None
                     elif isinstance(entity, Chat):
                         chat_type = 'group'
+                        chat_id = str(entity.id)
                         username = None
                         members_count = entity.participants_count
                     elif isinstance(entity, User):
                         chat_type = 'user'
+                        chat_id = str(entity.id)
                         username = entity.username
                         members_count = 1
                     else:
@@ -198,7 +206,8 @@ class Forwarder:
 
                     dest_msg = await self.client.forward_messages(
                         int(dest_id),
-                        messages=event.message
+                        messages=event.message,
+                        drop_author=True
                     )
 
                     if has_text:
