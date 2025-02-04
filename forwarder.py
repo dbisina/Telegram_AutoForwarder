@@ -338,18 +338,18 @@ class Forwarder:
         except Exception as e:
             logger.error(f"Error in handle_message: {e}")
 
-def get_file_extension(self, media):
-    """Get appropriate file extension for media type"""
-    # Check for different media types
-    if hasattr(media, 'photo'):
-        return '.jpg'  # Telegram photos are typically JPEG
-    if hasattr(media, 'document'):
-        if media.document.mime_type:
-            return guess_extension(media.document.mime_type) or '.bin'
-        return os.path.splitext(media.document.attributes[0].file_name)[1]
-    if hasattr(media, 'sticker'):
-        return '.webp' if media.sticker.mime_type == 'image/webp' else '.png'
-    return '.bin'  # Fallback extension
+    def get_file_extension(self, media):
+        """Get appropriate file extension for media type"""
+        # Check for different media types
+        if hasattr(media, 'photo'):
+            return '.jpg'  # Telegram photos are typically JPEG
+        if hasattr(media, 'document'):
+            if media.document.mime_type:
+                return guess_extension(media.document.mime_type) or '.bin'
+            return os.path.splitext(media.document.attributes[0].file_name)[1]
+        if hasattr(media, 'sticker'):
+            return '.webp' if media.sticker.mime_type == 'image/webp' else '.png'
+        return '.bin'  # Fallback extension
 
     async def stop_forwarding(self, source_id: str, dest_id: str):
         """Enhanced stop forwarding with cleanup"""
