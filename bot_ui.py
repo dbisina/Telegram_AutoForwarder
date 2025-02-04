@@ -8,6 +8,7 @@ import os
 import socket
 from dotenv import load_dotenv
 from typing import Optional, Dict
+from forwarder import Forwarder  # Import Forwarder class
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +33,7 @@ class BotUI:
         self.bot = TelegramClient("bot_ui", API_ID, API_HASH)
         self.user_states: Dict[int, dict] = {}
         self.config = self.load_config()
+        self.forwarder = Forwarder()
         self.lock = asyncio.Lock()
 
     def load_config(self) -> dict:
