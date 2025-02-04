@@ -137,11 +137,17 @@ class Forwarder:
                 else:
                     continue
 
-                # Get chat metadata
+                # Get chat metadata safely
+                title = getattr(entity, 'title', None)
+                if not title:
+                    title = getattr(entity, 'first_name', '') + ' ' + getattr(entity, 'last_name', '')
+
+                # Strip any leading or trailing spaces in title
+                title = title.strip()
+
+                # Save chat metadata to dictionary
                 chats[chat_id] = {
-                    'title': getattr(entity, 'title', 
-                                getattr(entity, 'first_name', '') + ' ' + 
-                                getattr(entity, 'last_name', '')).strip(),
+                    'title': title,
                     'type': self.get_chat_type(entity),
                     'username': getattr(entity, 'username', None),
                     'access_hash': getattr(entity, 'access_hash', None)
@@ -164,6 +170,7 @@ class Forwarder:
         if isinstance(entity, User):
             return 'user'
         return 'unknown'
+
 
     async def process_command(self, command: str) -> str:
         try:
