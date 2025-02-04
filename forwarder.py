@@ -56,50 +56,50 @@ class Forwarder:
     async def fetch_available_chats(self):
         """Fetch all available chats with detailed information"""
         try:
-            """result = await self.client(GetDialogsRequest(
+            result = await self.client(GetDialogsRequest(
                 offset_date=None,
                 offset_id=0,
                 offset_peer=InputPeerEmpty(),
                 limit=200,
                 hash=0
-            ))"""
+            ))
 
             chats = {}
-            for dialog in dialog:
+            for dialog in result.dialogs:  # Iterate through all dialogs in the result
                 try:
                     # Get the peer from dialog
-                    #peer = dialog.peer
-                    entity = await self.client.get_dialogs()
-                    
+                    peer = dialog.peer
+                    entity = await self.client.get_dialog(peer)  # Use get_dialog for the peer
+
                     # Handle different entity types
-                    if isinstance(entity, Channel):
-                        if entity.broadcast:
+                    if isinstance(entity.peer, Channel):
+                        if entity.peer.broadcast:
                             chat_type = 'channel'
-                            chat_id = str(entity.id)
-                            
+                            chat_id = str(entity.peer.id)
                         else:
                             chat_type = 'supergroup'
-                            chat_id = f"-100{entity.id}"  # Proper supergroup ID format
-                        username = entity.username if hasattr(entity, 'username') else None
-                        members_count = entity.participants_count if hasattr(entity, 'participants_count') else None
-                    elif isinstance(entity, Chat):
+                            chat_id = f"-100{entity.peer.id}"  # Proper supergroup ID format
+                        username = entity.peer.username if hasattr(entity.peer, 'username') else None
+                        members_count = entity.peer.participants_count if hasattr(entity.peer, 'participants_count') else None
+                    elif isinstance(entity.peer, Chat):
                         chat_type = 'group'
-                        chat_id = str(entity.id)
+                        chat_id = str(entity.peer.id)
                         username = None
-                        members_count = entity.participants_count
-                    elif isinstance(entity, User):
+                        members_count = entity.peer.participants_count if hasattr(entity.peer, 'participants_count') else None
+                    elif isinstance(entity.peer, User):
                         chat_type = 'user'
-                        chat_id = str(entity.id)
-                        username = entity.username
-                        members_count = 1
+                        chat_id = str(entity.peer.id)
+                        username = entity.peer.username
+                        members_count = 1  # A user is considered to have 1 member
                     else:
-                        continue
+                        continue  # Skip unsupported types
 
-                    chat_id = str(entity.id)
-                    title = getattr(entity, 'title', 
-                                getattr(entity, 'first_name', '') + ' ' + 
-                                getattr(entity, 'last_name', '')).strip()
+                    # Get the title for the dialog (either channel title or user name)
+                    title = getattr(entity.peer, 'title', 
+                                    getattr(entity.peer, 'first_name', '') + ' ' + 
+                                    getattr(entity.peer, 'last_name', '')).strip()
 
+                    # Store the information in the chats dictionary
                     chats[chat_id] = {
                         'id': chat_id,
                         'title': title,
@@ -107,9 +107,9 @@ class Forwarder:
                         'username': username,
                         'members_count': members_count
                     }
-
                 except Exception as e:
                     logger.error(f"Error processing dialog: {e}")
+
                     continue
 
             self.config['available_chats'] = chats
