@@ -53,11 +53,12 @@ class Forwarder:
         except Exception as e:
             logger.error(f"Error saving config: {e}")
 
-    async def fetch_available_chats(self):
-        """Fetch all available chats with detailed information"""
+    """async def fetch_available_chats(self):
+        #Fetch all available chats with detailed information
         try:
             result = await self.client(GetDialogsRequest(
                 offset_date=None,
+                offset_id=0,
                 offset_peer=InputPeerEmpty(),
                 limit=200,
                 hash=0
@@ -110,7 +111,59 @@ class Forwarder:
 
         except Exception as e:
             logger.error(f"Error fetching chats: {e}")
+            return f"Error: {str(e)}"""
+    
+    async def fetch_available_chats(self):
+        """Fetch dialogs with proper ID formatting including hyphens"""
+        try:
+            dialogs = await self.client.get_dialogs(limit=None)
+            chats = {}
+
+            for dialog in dialogs:
+                entity = dialog.entity
+                if not entity:
+                    continue
+
+                # Get properly formatted ID with hyphens
+                if hasattr(entity, 'id'):
+                    if isinstance(entity, Channel):
+                        # Handle supergroups/channels with -100 prefix
+                        chat_id = f"-100{entity.id}" if entity.megagroup else str(entity.id)
+                    elif isinstance(entity, Chat):
+                        # Regular groups get negative IDs
+                        chat_id = f"-{entity.id}"
+                    else:
+                        chat_id = str(entity.id)
+                else:
+                    continue
+
+                # Get chat metadata
+                chats[chat_id] = {
+                    'title': getattr(entity, 'title', 
+                                getattr(entity, 'first_name', '') + ' ' + 
+                                getattr(entity, 'last_name', '')).strip(),
+                    'type': self.get_chat_type(entity),
+                    'username': getattr(entity, 'username', None),
+                    'access_hash': getattr(entity, 'access_hash', None)
+                }
+
+            self.config['available_chats'] = chats
+            self.save_config()
+            return "Success: Chats fetched with proper ID formatting"
+
+        except Exception as e:
+            logger.error(f"Error fetching dialogs: {e}")
             return f"Error: {str(e)}"
+
+    def get_chat_type(self, entity):
+        """Return proper chat type identifier"""
+        if isinstance(entity, Channel):
+            return 'channel' if entity.broadcast else 'supergroup'
+        if isinstance(entity, Chat):
+            return 'group'
+        if isinstance(entity, User):
+            return 'user'
+        return 'unknown'
 
     async def process_command(self, command: str) -> str:
         try:
