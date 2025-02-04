@@ -281,7 +281,7 @@ class Forwarder:
         return processed_text
 
     def should_forward_message(self, text: str) -> bool:
-        if not text:
+        """if not text:
             return False
 
         text_lower = text.lower()
@@ -289,7 +289,7 @@ class Forwarder:
         # Check for blacklisted words first.
         if any(word.lower() in text_lower for word in self.config['blacklist_words']):
             logger.info(f"Message blocked by blacklist: {text[:50]}...")
-            return False
+            return False"""
 
         # Approved words filter is disabled for now.
         return True
