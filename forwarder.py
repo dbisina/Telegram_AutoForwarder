@@ -215,7 +215,7 @@ class Forwarder:
             logger.error(f"Error processing command: {e}")
             return f"Error: {str(e)}"
 
-    async def handle_message(self, event):
+    """async def handle_message(self, event):
         try:
             logger.info(f"Received message in chat {event.chat_id}")
             self.config = self.load_config()
@@ -279,6 +279,50 @@ class Forwarder:
                     logger.error(f"Error forwarding to {dest_id}: {e}")
 
             self.save_message_map()
+
+        except Exception as e:
+            logger.error(f"Error in handle_message: {e}")
+            """
+    async def handle_message(self, event):
+        try:
+            source_id = str(event.chat_id)
+            if source_id not in self.config['forwarding_rules']:
+                return
+
+            for dest_id in self.config['forwarding_rules'][source_id]:
+                try:
+                    rule_key = f"{source_id}:{dest_id}"
+                    forward_media = self.config['forward_media_settings'].get(rule_key, True)
+
+                    if event.message.media and forward_media:
+                        # Create temporary directory that auto-deletes
+                        with tempfile.TemporaryDirectory() as temp_dir:
+                            try:
+                                # Download media to temp file
+                                temp_path = os.path.join(temp_dir, "media")
+                                await event.message.download_media(temp_path)
+                                
+                                # Send media with caption
+                                caption = self.process_message_text(event.message.text) if event.message.text else None
+                                await self.client.send_file(
+                                    int(dest_id),
+                                    temp_path,
+                                    caption=caption
+                                )
+                            except Exception as media_error:
+                                logger.error(f"Media handling error: {media_error}")
+                                continue
+
+                    elif event.message.text:
+                        # Handle text message
+                        processed_text = self.process_message_text(event.message.text)
+                        await self.client.send_message(
+                            int(dest_id),
+                            processed_text
+                        )
+
+                except Exception as e:
+                    logger.error(f"Error sending to {dest_id}: {e}")
 
         except Exception as e:
             logger.error(f"Error in handle_message: {e}")
