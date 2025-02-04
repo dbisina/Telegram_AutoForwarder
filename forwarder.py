@@ -65,11 +65,11 @@ class Forwarder:
             ))
 
             chats = {}
-            for dialog in result.dialogs:
+            for dialog in result.dialog:
                 try:
                     # Get the peer from dialog
                     peer = dialog.peer
-                    entity = await self.client.get_entity(peer)
+                    entity = await self.client.get_dialogs(peer)
                     
                     # Handle different entity types
                     if isinstance(entity, Channel):
