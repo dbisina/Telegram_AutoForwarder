@@ -113,45 +113,57 @@ class Forwarder:
             logger.error(f"Error fetching chats: {e}")
             return f"Error: {str(e)}"""
     
+    # In forwarder.py (updated fetch_available_chats method)
     async def fetch_available_chats(self):
-        """Fetch dialogs with proper ID formatting including hyphens"""
+        """Fetch dialogs with proper ID formatting and null checks"""
         try:
             dialogs = await self.client.get_dialogs(limit=None)
             chats = {}
 
             for dialog in dialogs:
-                entity = dialog.entity
-                if not entity:
-                    continue
+                try:
+                    entity = dialog.entity
+                    if not entity:
+                        continue
 
-                # Get properly formatted ID with hyphens
-                if hasattr(entity, 'id'):
+                    # Safely get entity ID
+                    entity_id = getattr(entity, 'id', None)
+                    if entity_id is None:
+                        continue
+
+                    # Determine chat type and format ID
                     if isinstance(entity, Channel):
-                        # Handle supergroups/channels with -100 prefix
-                        chat_id = f"-100{entity.id}" if entity.megagroup else str(entity.id)
+                        if entity.megagroup:
+                            chat_id = f"-100{entity_id}"
+                            chat_type = "supergroup"
+                        else:
+                            chat_id = str(entity_id)
+                            chat_type = "channel"
                     elif isinstance(entity, Chat):
-                        # Regular groups get negative IDs
-                        chat_id = f"-{entity.id}"
+                        chat_id = f"-{entity_id}"
+                        chat_type = "group"
+                    elif isinstance(entity, User):
+                        chat_id = str(entity_id)
+                        chat_type = "user"
                     else:
-                        chat_id = str(entity.id)
-                else:
+                        continue
+
+                    # Get chat title safely
+                    title = getattr(entity, 'title', None) or \
+                            getattr(entity, 'first_name', '') + ' ' + \
+                            getattr(entity, 'last_name', '')
+                    title = title.strip()
+
+                    chats[chat_id] = {
+                        'title': title,
+                        'type': chat_type,
+                        'username': getattr(entity, 'username', None),
+                        'access_hash': getattr(entity, 'access_hash', None)
+                    }
+
+                except Exception as e:
+                    logger.error(f"Error processing dialog: {e}")
                     continue
-
-                # Get chat metadata safely
-                title = getattr(entity, 'title', None)
-                if not title:
-                    title = getattr(entity, 'first_name', '') + ' ' + getattr(entity, 'last_name', '')
-
-                # Strip any leading or trailing spaces in title
-                title = title.strip()
-
-                # Save chat metadata to dictionary
-                chats[chat_id] = {
-                    'title': title,
-                    'type': self.get_chat_type(entity),
-                    'username': getattr(entity, 'username', None),
-                    'access_hash': getattr(entity, 'access_hash', None)
-                }
 
             self.config['available_chats'] = chats
             self.save_config()
@@ -160,16 +172,6 @@ class Forwarder:
         except Exception as e:
             logger.error(f"Error fetching dialogs: {e}")
             return f"Error: {str(e)}"
-
-    def get_chat_type(self, entity):
-        """Return proper chat type identifier"""
-        if isinstance(entity, Channel):
-            return 'channel' if entity.broadcast else 'supergroup'
-        if isinstance(entity, Chat):
-            return 'group'
-        if isinstance(entity, User):
-            return 'user'
-        return 'unknown'
 
 
     async def process_command(self, command: str) -> str:
