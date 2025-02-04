@@ -318,15 +318,27 @@ class Forwarder:
             json.dump(serializable_map, f)
 
     def load_message_map(self):
-        try:
+    `    try:
             with open('message_map.json', 'r') as f:
-                data = json.load(f)
-                self.message_map = {
-                    int(k): {int(k2): v for k2, v in v.items()}
-                    for k, v in data.items()
-                }
+                content = f.read().strip()
+                if content:  # Check if file has content
+                    data = json.loads(content)
+                    self.message_map = {
+                        int(k): {int(k2): v for k2, v in v.items()}
+                        for k, v in data.items()
+                    }
+                else:
+                    self.message_map = {}
         except FileNotFoundError:
             self.message_map = {}
+            # Create the file if it doesn't exist
+            with open('message_map.json', 'w') as f:
+                json.dump({}, f)
+        except json.JSONDecodeError:
+            logger.warning("Invalid message_map.json found, creating new one")
+            self.message_map = {}
+            with open('message_map.json', 'w') as f:
+                json.dump({}, f)`
 
     async def start(self):
         await self.client.start()
