@@ -172,3 +172,35 @@
 2025-02-01 07:07:31,058 - __main__ - INFO - Stopped forwarding from 1642769667 to 1493595978
 2025-02-01 07:07:34,585 - __main__ - INFO - Response from forwarder: Stopped forwarding from 1307851263 to 1493595978
 2025-02-01 07:07:34,585 - __main__ - INFO - Stopped forwarding from 1307851263 to 1493595978
+2025-02-01 11:22:35,928 - __main__ - INFO - Response from forwarder: Started forwarding from 1642769667 to 2257592664
+2025-02-01 11:22:35,929 - __main__ - INFO - Started forwarding from 1642769667 to 2257592664
+2025-02-01 11:23:06,669 - __main__ - INFO - Response from forwarder: Started forwarding from 1307851263 to 4740622041
+2025-02-01 11:23:06,669 - __main__ - INFO - Started forwarding from 1307851263 to 4740622041
+2025-02-01 11:23:28,262 - __main__ - INFO - Response from forwarder: Started forwarding from 1751074364 to 4740622041
+2025-02-01 11:23:28,262 - __main__ - INFO - Started forwarding from 1751074364 to 4740622041
+2025-02-01 12:55:55,979 - __main__ - INFO - Response from forwarder: Started forwarding from 1581085161 to 4663882134
+2025-02-01 12:55:55,979 - __main__ - INFO - Started forwarding from 1581085161 to 4663882134
+2025-02-01 13:32:50,393 - __main__ - INFO - Response from forwarder: Stopped forwarding from 1581085161 to 4663882134
+2025-02-01 13:32:50,394 - __main__ - INFO - Stopped forwarding from 1581085161 to 4663882134
+2025-02-02 04:50:43,996 - __main__ - INFO - Response from forwarder: Success: Chats fetched and saved
+2025-02-04 03:58:16,705 - __main__ - INFO - Response from forwarder: Success: Chats fetched and saved
+2025-02-04 03:58:36,908 - __main__ - INFO - Response from forwarder: Started forwarding from 4773952262 to 4795859587
+2025-02-04 03:58:36,908 - __main__ - INFO - Started forwarding from 4773952262 to 4795859587
+2025-02-04 04:04:05,107 - telethon.network.mtprotosender - INFO - Connecting to 149.154.167.92:443/TcpFull...
+2025-02-04 04:04:05,132 - telethon.network.mtprotosender - INFO - Connection to 149.154.167.92:443/TcpFull complete!
+2025-02-04 04:04:05,310 - __main__ - INFO - Bot started successfully!
+2025-02-04 04:06:04,421 - telethon.network.mtprotosender - INFO - Disconnecting from 149.154.167.92:443/TcpFull...
+2025-02-04 04:06:04,422 - telethon.network.mtprotosender - INFO - Disconnection from 149.154.167.92:443/TcpFull complete!
+2025-02-04 04:06:04,428 - __main__ - INFO - Bot stopped by user
+2025-02-04 04:06:21,095 - telethon.network.mtprotosender - INFO - Connecting to 149.154.167.92:443/TcpFull...
+2025-02-04 04:06:21,121 - telethon.network.mtprotosender - INFO - Connection to 149.154.167.92:443/TcpFull complete!
+2025-02-04 04:06:21,280 - __main__ - INFO - Bot started successfully!
+2025-02-04 04:06:42,626 - telethon.network.mtprotosender - INFO - Connecting to 149.154.167.92:443/TcpFull...
+2025-02-04 04:06:42,652 - telethon.network.mtprotosender - INFO - Connection to 149.154.167.92:443/TcpFull complete!
+2025-02-04 04:06:42,858 - __main__ - INFO - Bot started successfully!
+2025-02-04 04:06:47,098 - telethon.network.mtprotosender - INFO - Connecting to 149.154.167.92:443/TcpFull...
+2025-02-04 04:06:47,123 - telethon.network.mtprotosender - INFO - Connection to 149.154.167.92:443/TcpFull complete!
+2025-02-04 04:06:47,583 - __main__ - INFO - Bot started successfully!
+2025-02-04 04:12:06,220 - telethon.network.mtprotosender - INFO - Connecting to 149.154.167.92:443/TcpFull...
+2025-02-04 04:12:06,246 - telethon.network.mtprotosender - INFO - Connection to 149.154.167.92:443/TcpFull complete!
+2025-02-04 04:12:06,418 - __main__ - INFO - Bot started successfully!
