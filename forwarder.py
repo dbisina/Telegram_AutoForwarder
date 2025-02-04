@@ -310,22 +310,34 @@ class Forwarder:
             await writer.wait_closed()
 
     def save_message_map(self):
-        with open('message_map.json', 'w') as f:
-            serializable_map = {
-                str(k): {str(k2): v for k2, v in v.items()}
-                for k, v in self.message_map.items()
-            }
-            json.dump(serializable_map, f)
+        """Ensure message map is saved properly"""
+        try:
+            with open('message_map.json', 'w') as f:
+                json.dump({
+                    str(k): {str(k2): v for k2, v in v.items()}
+                    for k, v in self.message_map.items()
+                }, f)
+        except Exception as e:
+            logger.error(f"Error saving message map: {e}")
+
 
     def load_message_map(self):
         try:
             with open('message_map.json', 'r') as f:
-                data = json.load(f)
+                # Check if file is empty
+                content = f.read().strip()
+                if not content:
+                    self.message_map = {}
+                    return
+                
+                # If not empty, proceed with JSON parsing
+                data = json.loads(content)
                 self.message_map = {
                     int(k): {int(k2): v for k2, v in v.items()}
                     for k, v in data.items()
                 }
-        except FileNotFoundError:
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Handle both file not found and invalid JSON
             self.message_map = {}
 
     async def start(self):
