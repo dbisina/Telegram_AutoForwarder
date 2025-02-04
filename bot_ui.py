@@ -563,14 +563,23 @@ class BotUI:
         ])
 
     async def handle_message(self, event: Message):
-        """Handle text messages for various states"""
+        """Handle text messages for various states and forward non-command messages"""
         if not await self.is_admin(event.sender_id):
             return
 
         user_id = event.sender_id
+
+        # If user is not in an active state, forward the message
         if user_id not in self.user_states:
+            logger.debug(f"Forwarding message from {event.chat_id} - {event.message.text}")
+            
+            if hasattr(self, "forwarder"):  # Ensure forwarder is initialized
+                await self.forwarder.forward_messages(event)
+            else:
+                logger.error("Forwarder is not initialized!")
             return
 
+        # Handle state-based admin inputs
         if event.message.text == "/cancel":
             del self.user_states[user_id]
             await self.handle_start(event)
