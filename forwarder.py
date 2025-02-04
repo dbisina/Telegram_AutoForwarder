@@ -9,6 +9,7 @@ import logging
 import socket
 import os
 from dotenv import load_dotenv
+import tempfile
 
 # Load environment variables
 load_dotenv()
