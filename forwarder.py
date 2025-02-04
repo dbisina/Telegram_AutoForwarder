@@ -56,20 +56,20 @@ class Forwarder:
     async def fetch_available_chats(self):
         """Fetch all available chats with detailed information"""
         try:
-            result = await self.client(GetDialogsRequest(
+            """result = await self.client(GetDialogsRequest(
                 offset_date=None,
                 offset_id=0,
                 offset_peer=InputPeerEmpty(),
                 limit=200,
                 hash=0
-            ))
+            ))"""
 
             chats = {}
-            for dialog in result.dialog:
+            for dialog in dialog:
                 try:
                     # Get the peer from dialog
-                    peer = dialog.peer
-                    entity = await self.client.get_dialogs(peer)
+                    #peer = dialog.peer
+                    entity = await self.client.get_dialogs()
                     
                     # Handle different entity types
                     if isinstance(entity, Channel):
