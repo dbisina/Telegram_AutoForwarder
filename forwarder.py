@@ -155,22 +155,30 @@ class Forwarder:
 
     async def handle_message(self, event):
         try:
+            logger.info(f"Received message in chat {event.chat_id}")
             self.config = self.load_config()
 
             source_id = str(event.chat_id)
             if source_id not in self.config['forwarding_rules']:
+                logger.info(f"No forwarding rules found for chat {source_id}")
                 return
 
             destinations = self.config['forwarding_rules'][source_id]
+            logger.info(f"Found forwarding rules to destinations: {destinations}")
 
             has_media = bool(event.message.media)
             has_text = bool(event.message.text)
+            logger.info(f"Message has media: {has_media}, has text: {has_text}")
 
             if not has_text and not has_media:
+                logger.info("Message has no content to forward")
                 return
 
-            if has_text and not self.should_forward_message(event.message.text):
-                return
+            if has_text:
+                logger.info(f"Message text: {event.message.text[:50]}...")
+                if not self.should_forward_message(event.message.text):
+                    logger.info("Message filtered by should_forward_message")
+                    return
 
             src_chat_id = event.chat_id
             src_msg_id = event.message.id
