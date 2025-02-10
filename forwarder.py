@@ -280,6 +280,10 @@ class Forwarder:
             src_chat_id = event.chat_id
             src_msg_id = event.message.id
 
+            logger.info(f"Edit event: chat {src_chat_id}, msg {src_msg_id}")
+            logger.info(f"Current message_map: {self.message_map}")
+            logger.info(f"Message text: {event.message.text}")
+
             if (src_chat_id in self.message_map and
                 src_msg_id in self.message_map[src_chat_id]):
 
