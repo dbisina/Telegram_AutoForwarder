@@ -288,10 +288,10 @@ class Forwarder:
             if source_id in self.config['forwarding_rules']:
                 logger.info(f"Destinations for {source_id}: {self.config['forwarding_rules'][source_id]}")
 
-            if (src_chat_id in self.message_map and
-                src_msg_id in self.message_map[src_chat_id]):
+            if (source_id in self.message_map and
+                src_msg_id in self.message_map[source_id]):
 
-                for dest_chat_id, dest_msg_id in self.message_map[src_chat_id][src_msg_id]:
+                for dest_chat_id, dest_msg_id in self.message_map[source_id][src_msg_id]:
                     try:
                         await self.client.edit_message(dest_chat_id, dest_msg_id, processed_text)
                         logger.info(f"Updated forwarded message in {dest_chat_id}")
@@ -300,6 +300,28 @@ class Forwarder:
 
         except Exception as e:
             logger.error(f"Error in handle_edit: {e}")
+
+    async def handle_delete(self, event):
+        try:
+            source_id = str(event.chat_id)
+            if source_id not in self.config['forwarding_rules']:
+                return
+
+            for msg_id in event.deleted_ids:
+                if source_id in self.message_map and msg_id in self.message_map[source_id]:
+                    for dest_chat_id, dest_msg_id in self.message_map[source_id][msg_id]:
+                        try:
+                            await self.client.delete_messages(dest_chat_id, dest_msg_id)
+                            logger.info(f"Deleted message {dest_msg_id} in {dest_chat_id}")
+                        except Exception as e:
+                            logger.error(f"Error deleting message {dest_msg_id} in {dest_chat_id}: {e}")
+                    # Cleanup message_map
+                    del self.message_map[source_id][msg_id]
+                    if not self.message_map[source_id]:
+                        del self.message_map[source_id]
+                    self.save_message_map()
+        except Exception as e:
+            logger.error(f"Error in handle_delete: {e}")
 
     def process_message_text(self, text: str) -> str:
         if not text:
@@ -387,6 +409,7 @@ class Forwarder:
         asyncio.create_task(self.start_socket_server())
         self.client.add_event_handler(self.handle_message, events.NewMessage())
         self.client.add_event_handler(self.handle_edit, events.MessageEdited())
+        self.client.add_event_handler(self.handle_delete, events.MessageDeleted())
         logger.info("Forwarder started successfully!")
         try:
             await self.client.run_until_disconnected()
