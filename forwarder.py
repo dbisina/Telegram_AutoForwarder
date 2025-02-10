@@ -54,66 +54,6 @@ class Forwarder:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             logger.error(f"Error saving config: {e}")
-
-    """async def fetch_available_chats(self):
-        #Fetch all available chats with detailed information
-        try:
-            result = await self.client(GetDialogsRequest(
-                offset_date=None,
-                offset_id=0,
-                offset_peer=InputPeerEmpty(),
-                limit=200,
-                hash=0
-            ))
-
-            chats = {}
-            for dialog in result.dialogs:
-                try:
-                    # Get the peer from dialog
-                    peer = dialog.peer
-                    entity = await self.client.get_entity(peer)
-                    
-                    # Handle different entity types
-                    if isinstance(entity, Channel):
-                        chat_type = 'channel' if entity.broadcast else 'supergroup'
-                        chat_id = str(entity.id)
-                        username = entity.username if hasattr(entity, 'username') else None
-                        members_count = entity.participants_count if hasattr(entity, 'participants_count') else None
-                    elif isinstance(entity, Chat):
-                        chat_type = 'group'
-                        username = None
-                        members_count = entity.participants_count
-                    elif isinstance(entity, User):
-                        chat_type = 'user'
-                        username = entity.username
-                        members_count = 1
-                    else:
-                        continue
-
-                    chat_id = str(entity.id)
-                    title = getattr(entity, 'title', 
-                                getattr(entity, 'first_name', '') + ' ' + 
-                                getattr(entity, 'last_name', '')).strip()
-
-                    chats[chat_id] = {
-                        'id': chat_id,
-                        'title': title,
-                        'type': chat_type,
-                        'username': username,
-                        'members_count': members_count
-                    }
-
-                except Exception as e:
-                    logger.error(f"Error processing dialog: {e}")
-                    continue
-
-            self.config['available_chats'] = chats
-            self.save_config()
-            return "Success: Chats fetched and saved"
-
-        except Exception as e:
-            logger.error(f"Error fetching chats: {e}")
-            return f"Error: {str(e)}"""
     
     # In forwarder.py (updated fetch_available_chats method)
     async def fetch_available_chats(self):
@@ -216,79 +156,17 @@ class Forwarder:
         except Exception as e:
             logger.error(f"Error processing command: {e}")
             return f"Error: {str(e)}"
+        
 
-    """async def handle_message(self, event):
-        try:
-            logger.info(f"Received message in chat {event.chat_id}")
-            self.config = self.load_config()
-
-            source_id = str(event.chat_id)
-            if source_id not in self.config['forwarding_rules']:
-                logger.info(f"No forwarding rules found for chat {source_id}")
-                return
-
-            destinations = self.config['forwarding_rules'][source_id]
-            logger.info(f"Found forwarding rules to destinations: {destinations}")
-
-            has_media = bool(event.message.media)
-            has_text = bool(event.message.text)
-            logger.info(f"Message has media: {has_media}, has text: {has_text}")
-
-            if not has_text and not has_media:
-                logger.info("Message has no content to forward")
-                return
-
-            if has_text:
-                logger.info(f"Message text: {event.message.text[:50]}...")
-                if not self.should_forward_message(event.message.text):
-                    logger.info("Message filtered by should_forward_message")
-                    return
-
-            src_chat_id = event.chat_id
-            src_msg_id = event.message.id
-
-            if src_chat_id not in self.message_map:
-                self.message_map[src_chat_id] = {}
-
-            self.message_map[src_chat_id][src_msg_id] = []
-
-            for dest_id in destinations:
-                try:
-                    rule_key = f"{source_id}:{dest_id}"
-                    forward_media = self.config['forward_media_settings'].get(rule_key, True)
-
-                    if has_media and not forward_media:
-                        continue
-
-                    dest_msg = await self.client.forward_messages(
-                        int(dest_id),
-                        messages=event.message,
-                        drop_author=True
-                    )
-
-                    if has_text:
-                        processed_text = self.process_message_text(event.message.text)
-                        if processed_text != event.message.text:
-                            await self.client.edit_message(
-                                int(dest_id),
-                                dest_msg.id,
-                                processed_text
-                            )
-
-                    self.message_map[src_chat_id][src_msg_id].append((int(dest_id), dest_msg.id))
-                    logger.info(f"Forwarded message from {source_id} to {dest_id}")
-                except Exception as e:
-                    logger.error(f"Error forwarding to {dest_id}: {e}")
-
-            self.save_message_map()
-
-        except Exception as e:
-            logger.error(f"Error in handle_message: {e}")
-            """
     async def handle_message(self, event):
         try:
             source_id = str(event.chat_id)
             if source_id not in self.config['forwarding_rules']:
+                return
+
+            # Check if message should be forwarded based on blacklist and approved words
+            if not self.should_forward_message(event.message.text or ''):
+                logger.info(f"Message blocked: {event.message.text[:50]}...")
                 return
 
             for dest_id in self.config['forwarding_rules'][source_id]:
@@ -296,41 +174,57 @@ class Forwarder:
                     rule_key = f"{source_id}:{dest_id}"
                     forward_media = self.config['forward_media_settings'].get(rule_key, True)
 
+                    # Handle media forwarding
                     if event.message.media and forward_media:
                         media = event.message.media
-                        # Get file extension from mime-type or media type
                         ext = self.get_file_extension(media)
                         
                         with tempfile.TemporaryDirectory() as temp_dir:
                             try:
-                                # Create temp file with proper extension
                                 temp_file = os.path.join(temp_dir, f"media{ext}")
-                                
-                                # Download media to specific file path
                                 await event.message.download_media(file=temp_file)
                                 
-                                # Verify file exists before sending
                                 if not os.path.exists(temp_file):
                                     raise ValueError("Downloaded file not found")
 
-                                # Send media with caption
+                                # Process caption
                                 caption = self.process_message_text(event.message.text) if event.message.text else None
-                                await self.client.send_file(
+                                
+                                # Send media file
+                                sent_msg = await self.client.send_file(
                                     int(dest_id),
                                     temp_file,
                                     caption=caption,
-                                    force_document=False  # Maintain media type
+                                    force_document=False
                                 )
-                            except Exception as media_error:
-                                logger.error(f"Media handling error: {media_error}")
+
+                                # Update message map for edit tracking
+                                self.message_map.setdefault(source_id, {})
+                                self.message_map[source_id].setdefault(event.message.id, [])
+                                self.message_map[source_id][event.message.id].append((int(dest_id), sent_msg.id))
+
+                            except Exception as e:
+                                logger.error(f"Error in handle_message: {e}")
                                 continue
 
+                    # Handle text messages
                     elif event.message.text:
                         processed_text = self.process_message_text(event.message.text)
-                        await self.client.send_message(
+                        
+                        # Send processed text message
+                        sent_msg = await self.client.send_message(
                             int(dest_id),
                             processed_text
                         )
+
+                        # Update message map for edit tracking
+                        self.message_map.setdefault(source_id, {})
+                        self.message_map[source_id].setdefault(event.message.id, [])
+                        self.message_map[source_id][event.message.id].append((int(dest_id), sent_msg.id))
+
+                    # Periodically save message map to persist across restarts
+                    if len(self.message_map.get(source_id, {})) % 10 == 0:
+                        self.save_message_map()
 
                 except Exception as e:
                     logger.error(f"Error sending to {dest_id}: {e}")
