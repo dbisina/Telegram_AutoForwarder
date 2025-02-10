@@ -283,6 +283,10 @@ class Forwarder:
             logger.info(f"Edit event: chat {src_chat_id}, msg {src_msg_id}")
             logger.info(f"Current message_map: {self.message_map}")
             logger.info(f"Message text: {event.message.text}")
+            logger.info(f"Forwarding rules: {self.config['forwarding_rules']}")
+
+            if source_id in self.config['forwarding_rules']:
+                logger.info(f"Destinations for {source_id}: {self.config['forwarding_rules'][source_id]}")
 
             if (src_chat_id in self.message_map and
                 src_msg_id in self.message_map[src_chat_id]):
