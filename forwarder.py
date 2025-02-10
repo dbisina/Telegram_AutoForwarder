@@ -313,11 +313,11 @@ class Forwarder:
             logger.info(f"Message blocked by blacklist: {text[:50]}...")
             return False
 
-        if self.config['approved_words']:
+        """if self.config['approved_words']:
             should_forward = any(word.lower() in text_lower for word in self.config['approved_words'])
             if not should_forward:
                 logger.info(f"Message doesn't contain any approved words: {text[:50]}...")
-            return should_forward
+            return should_forward"""
 
         return True
 
