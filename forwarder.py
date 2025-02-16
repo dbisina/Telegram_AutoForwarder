@@ -57,44 +57,43 @@ class Forwarder:
     
     # In forwarder.py (updated fetch_available_chats method)
     async def fetch_available_chats(self):
-        """Fetch dialogs with proper ID formatting and null checks"""
+        """Fetch dialogs with proper ID formatting for all group types"""
         try:
-            dialogs = await self.client.get_dialogs(limit=None)
-            chats = {}
+            dialogs = []
+            async for dialog in self.client.iter_dialogs():  # Get all dialogs
+                dialogs.append(dialog)
 
+            chats = {}
             for dialog in dialogs:
                 try:
                     entity = dialog.entity
                     if not entity:
                         continue
 
-                    # Safely get entity ID
                     entity_id = getattr(entity, 'id', None)
                     if entity_id is None:
                         continue
 
-                    # Determine chat type and format ID
+                    # Handle different entity types
                     if isinstance(entity, Channel):
                         if entity.megagroup:
-                            chat_id = f"-100{entity_id}"
+                            chat_id = f"-100{entity_id}"  # Supergroup
                             chat_type = "supergroup"
                         else:
-                            chat_id = str(entity_id)
+                            chat_id = str(entity_id)  # Channel
                             chat_type = "channel"
                     elif isinstance(entity, Chat):
-                        chat_id = f"-{entity_id}"
+                        chat_id = str(entity_id)  # Basic group (already negative)
                         chat_type = "group"
                     elif isinstance(entity, User):
-                        chat_id = str(entity_id)
+                        chat_id = str(entity_id)  # Private chat
                         chat_type = "user"
                     else:
                         continue
 
-                    # Get chat title safely
+                    # Get title safely
                     title = getattr(entity, 'title', None) or \
-                            getattr(entity, 'first_name', '') + ' ' + \
-                            getattr(entity, 'last_name', '')
-                    title = title.strip()
+                            f"{getattr(entity, 'first_name', '')} {getattr(entity, 'last_name', '')}".strip()
 
                     chats[chat_id] = {
                         'title': title,
@@ -384,25 +383,24 @@ class Forwarder:
         try:
             with open('message_map.json', 'r') as f:
                 content = f.read().strip()
-                if content:  # Check if file has content
+                if content:
                     data = json.loads(content)
                     self.message_map = {
-                        int(k): {int(k2): v for k2, v in v.items()}
+                        k: {int(k2): v for k2, v in v.items()}
                         for k, v in data.items()
                     }
                 else:
                     self.message_map = {}
         except FileNotFoundError:
             self.message_map = {}
-            # Create the file if it doesn't exist
             with open('message_map.json', 'w') as f:
                 json.dump({}, f)
         except json.JSONDecodeError:
-            logger.warning("Invalid message_map.json found, creating new one")
+            logger.warning("Invalid message_map.json, resetting")
             self.message_map = {}
             with open('message_map.json', 'w') as f:
                 json.dump({}, f)
-
+                
     async def start(self):
         await self.client.start()
         self.load_message_map()
