@@ -308,19 +308,32 @@ class Forwarder:
 
             for msg_id in event.deleted_ids:
                 if source_id in self.message_map and msg_id in self.message_map[source_id]:
-                    for dest_chat_id, dest_msg_id in self.message_map[source_id][msg_id]:
+                    entries = self.message_map[source_id][msg_id].copy()
+                    
+                    for dest_chat_id, dest_msg_id in entries:
                         try:
-                            await self.client.delete_messages(dest_chat_id, dest_msg_id)
-                            logger.info(f"Deleted message {dest_msg_id} in {dest_chat_id}")
+                            # Check delete permissions first
+                            chat = await self.client.get_entity(int(dest_chat_id))
+                            if not isinstance(chat, User):  # Skip PMs
+                                if not (await self.client.get_permissions(int(dest_chat_id))).is_admin:
+                                    logger.warning(f"No delete permissions in {dest_chat_id}")
+                                    continue
+                                
+                            await self.client.delete_messages(int(dest_chat_id), dest_msg_id)
+                            # Remove only if successful
+                            self.message_map[source_id][msg_id].remove((dest_chat_id, dest_msg_id))
+                            
                         except Exception as e:
-                            logger.error(f"Error deleting message {dest_msg_id} in {dest_chat_id}: {e}")
-                    # Cleanup message_map
-                    del self.message_map[source_id][msg_id]
-                    if not self.message_map[source_id]:
-                        del self.message_map[source_id]
+                            logger.error(f"Delete failed in {dest_chat_id}: {str(e)}")
+                            continue
+                    
+                    # Cleanup empty entries
+                    if not self.message_map[source_id][msg_id]:
+                        del self.message_map[source_id][msg_id]
                     self.save_message_map()
+                    
         except Exception as e:
-            logger.error(f"Error in handle_delete: {e}")
+            logger.error(f"Delete handler error: {str(e)}")
 
     def process_message_text(self, text: str) -> str:
         if not text:
@@ -379,18 +392,17 @@ class Forwarder:
             }
             json.dump(serializable_map, f)
 
+    # In load_message_map()
     def load_message_map(self):
         try:
             with open('message_map.json', 'r') as f:
-                content = f.read().strip()
-                if content:
-                    data = json.loads(content)
-                    self.message_map = {
-                        k: {int(k2): v for k2, v in v.items()}
-                        for k, v in data.items()
-                    }
-                else:
-                    self.message_map = {}
+                data = json.load(f)
+                self.message_map = {
+                    str(k): {int(msg_id): dest_messages for msg_id, dest_messages in v.items()}
+                    for k, v in data.items()
+                }
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.message_map = {}
         except FileNotFoundError:
             self.message_map = {}
             with open('message_map.json', 'w') as f:
